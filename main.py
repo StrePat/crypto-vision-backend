@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
 import requests
 import pandas as pd
 from prophet import Prophet
 
 app = FastAPI()
 
-# Autoriser les requêtes CORS
+# Autoriser les requêtes CORS (on autorise toutes les origines pour simplifier)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ajout de la route racine pour vérifier le déploiement
+# Route racine pour tester le déploiement
 @app.get("/")
 def read_root():
     return {"message": "Backend en ligne !"}
@@ -30,17 +31,21 @@ def predict():
     response = requests.get(url)
     data = response.json()
     
+    # Construction du DataFrame pour Prophet
     df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
     df["ds"] = pd.to_datetime(df["timestamp"], unit="ms")
     df["y"] = df["price"]
     df = df[["ds", "y"]]
     
+    # Instanciation et entraînement du modèle Prophet
     model = Prophet(daily_seasonality=True)
     model.fit(df)
     
+    # Création d'un DataFrame futur pour les 3 prochains jours
     future = model.make_future_dataframe(periods=3)
     forecast = model.predict(future)
     
+    # Extraire les prévisions des 3 prochains jours
     forecast_data = forecast[["ds", "yhat"]].tail(3)
     result = forecast_data.to_dict(orient="records")
     
@@ -48,4 +53,6 @@ def predict():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Utilise la variable d'environnement PORT, par défaut 8000
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
