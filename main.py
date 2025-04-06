@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ajout d'une route racine pour tester l'application
+# Route racine ajoutée pour tester l'application
 @app.get("/")
 def read_root():
     return {"message": "Backend en ligne !"}
