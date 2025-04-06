@@ -6,7 +6,7 @@ from prophet import Prophet
 
 app = FastAPI()
 
-# Autoriser les requêtes CORS (ici, on autorise toutes les origines pour simplifier)
+# Autoriser les requêtes CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Route racine ajoutée pour tester l'application
+# Ajout de la route racine pour vérifier le déploiement
 @app.get("/")
 def read_root():
     return {"message": "Backend en ligne !"}
@@ -26,26 +26,21 @@ def predict():
     Récupère les données historiques d'Ethereum sur 30 jours depuis CoinGecko,
     entraîne un modèle Prophet et prédit les prix pour les 3 prochains jours.
     """
-    # Récupération des données de CoinGecko (30 derniers jours)
     url = "https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=30"
     response = requests.get(url)
     data = response.json()
     
-    # Construction du DataFrame pour Prophet
     df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
     df["ds"] = pd.to_datetime(df["timestamp"], unit="ms")
     df["y"] = df["price"]
     df = df[["ds", "y"]]
     
-    # Instanciation et entraînement du modèle Prophet
     model = Prophet(daily_seasonality=True)
     model.fit(df)
     
-    # Création d'un DataFrame futur pour les 3 prochains jours
     future = model.make_future_dataframe(periods=3)
     forecast = model.predict(future)
     
-    # Extraire les prévisions des 3 prochains jours
     forecast_data = forecast[["ds", "yhat"]].tail(3)
     result = forecast_data.to_dict(orient="records")
     
